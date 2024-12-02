@@ -3,10 +3,16 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Payment() {
+  const router = useRouter()
   const [sameAsShipping, setSameAsShipping] = useState(true)
   const shippingAddress = "104 Ramleh Park, Dublin 6 Dublin D06 R5F6, Ireland"
+
+  const handleChangeAddress = () => {
+    router.push('/checkout')
+  }
 
   return (
     <div className="min-h-screen bg-black text-white font-mono">
@@ -30,7 +36,12 @@ export default function Payment() {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <div>Ships to: {shippingAddress}</div>
-                <button className="text-sm underline">Change</button>
+                <button 
+                  onClick={handleChangeAddress}
+                  className="text-sm underline hover:text-gray-400"
+                >
+                  Change
+                </button>
               </div>
             </div>
 
@@ -67,19 +78,19 @@ export default function Payment() {
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-2">
                       <Image
-                        src="/payment/visa.jpg"
+                        src="/images/payment/visa.jpg"
                         alt="Visa"
                         width={32}
                         height={20}
                       />
                       <Image
-                        src="/payment/mastercard.jpg"
+                        src="/images/payment/mastercard.jpg"
                         alt="Mastercard"
                         width={32}
                         height={20}
                       />
                       <Image
-                        src="/payment/amex.jpg"
+                        src="/images/payment/amex.jpg"
                         alt="American Express"
                         width={32}
                         height={20}
@@ -103,25 +114,49 @@ export default function Payment() {
 
               {/* PayPal */}
               <div className="border border-white/20 p-4 mt-4">
-                <div className="flex items-center gap-2">
-                  <input type="radio" name="payment" id="paypal" />
-                  <label htmlFor="paypal">PayPal</label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input type="radio" name="payment" id="paypal" />
+                    <label htmlFor="paypal">PayPal</label>
+                  </div>
+                  <Image
+                    src="/images/payment/paypal.jpg"
+                    alt="PayPal"
+                    width={60}
+                    height={20}
+                  />
                 </div>
               </div>
 
               {/* Apple Pay */}
               <div className="border border-white/20 p-4 mt-4">
-                <div className="flex items-center gap-2">
-                  <input type="radio" name="payment" id="applepay" />
-                  <label htmlFor="applepay">Apple Pay</label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input type="radio" name="payment" id="applepay" />
+                    <label htmlFor="applepay">Apple Pay</label>
+                  </div>
+                  <Image
+                    src="/images/payment/applepay.jpg"
+                    alt="Apple Pay"
+                    width={50}
+                    height={20}
+                  />
                 </div>
               </div>
 
               {/* Google Pay */}
               <div className="border border-white/20 p-4 mt-4">
-                <div className="flex items-center gap-2">
-                  <input type="radio" name="payment" id="googlepay" />
-                  <label htmlFor="googlepay">Google Pay</label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input type="radio" name="payment" id="googlepay" />
+                    <label htmlFor="googlepay">Google Pay</label>
+                  </div>
+                  <Image
+                    src="/images/payment/googlepay.jpg"
+                    alt="Google Pay"
+                    width={50}
+                    height={20}
+                  />
                 </div>
               </div>
             </div>

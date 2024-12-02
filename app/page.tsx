@@ -97,14 +97,44 @@ export default function Home() {
             </div>
 
             {/* Payment Methods */}
-            <div className="pt-4">
-              <p className="text-sm text-gray-400 text-center mb-2">Secure payment via</p>
-              <div className="flex justify-center gap-2">
-                <Image src="/images/payment/svg_visa.jpg" alt="Visa" width={24} height={24} />
-                <Image src="/images/payment/svg_mastercard.jpg" alt="Mastercard" width={24} height={24} />
-                <Image src="/images/payment/svg_amex.jpg" alt="American Express" width={24} height={24} />
-                <Image src="/images/payment/svg_applepay.jpg" alt="Apple Pay" width={24} height={24} />
-                <Image src="/images/payment/svg_googlepay.jpg" alt="Google Pay" width={24} height={24} />
+            <div className="flex gap-2 items-center mt-4">
+              <span className="text-sm text-gray-400">Secure payment via</span>
+              <div className="flex gap-2">
+                <Image
+                  src="/images/payment/visa.jpg"
+                  alt="Visa"
+                  width={32}
+                  height={20}
+                  className="opacity-60 hover:opacity-100"
+                />
+                <Image
+                  src="/images/payment/mastercard.jpg"
+                  alt="Mastercard"
+                  width={32}
+                  height={20}
+                  className="opacity-60 hover:opacity-100"
+                />
+                <Image
+                  src="/images/payment/amex.jpg"
+                  alt="American Express"
+                  width={32}
+                  height={20}
+                  className="opacity-60 hover:opacity-100"
+                />
+                <Image
+                  src="/images/payment/applepay.jpg"
+                  alt="Apple Pay"
+                  width={32}
+                  height={20}
+                  className="opacity-60 hover:opacity-100"
+                />
+                <Image
+                  src="/images/payment/googlepay.jpg"
+                  alt="Google Pay"
+                  width={32}
+                  height={20}
+                  className="opacity-60 hover:opacity-100"
+                />
               </div>
             </div>
 
