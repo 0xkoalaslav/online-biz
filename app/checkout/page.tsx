@@ -217,7 +217,21 @@ export default function Checkout() {
       ...confirmedAddress
     }))
     setShowAddressValidation(false)
-    router.push('/checkout/payment')
+    
+    // Create URL with address parameters
+    const params = new URLSearchParams({
+      street: confirmedAddress.street,
+      city: confirmedAddress.city,
+      state: confirmedAddress.state,
+      postcode: confirmedAddress.postcode,
+      country: confirmedAddress.country
+    })
+    
+    if (confirmedAddress.apartment) {
+      params.append('apartment', confirmedAddress.apartment)
+    }
+    
+    router.push(`/checkout/shipping?${params.toString()}`)
   }
 
   const handleGooglePay = () => {
