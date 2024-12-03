@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AddressValidationModal from '@/components/AddressValidationModal'
-import { searchPlaces, getPlaceDetails, PlacesSuggestion } from '@/app/lib/mockPlaces'
+import { searchPlaces, getPlaceDetails, PlacesSuggestion } from '@/lib/mockPlaces'
 
 interface FormData {
   email: string
