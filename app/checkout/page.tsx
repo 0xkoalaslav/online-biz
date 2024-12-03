@@ -5,45 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AddressValidationModal from '@/components/AddressValidationModal'
-
-// Mock address data
-const mockAddresses = [
-  {
-    street: 'Wernigerode',
-    city: 'Berlin',
-    state: 'Berlin',
-    country: 'Germany',
-    postcode: '10115'
-  },
-  {
-    street: 'Werribee',
-    city: 'Victoria',
-    state: 'VIC',
-    country: 'Australia',
-    postcode: '3030'
-  },
-  {
-    street: 'Wertheim Village',
-    city: 'Almosenberg',
-    state: 'Wertheim am Main',
-    country: 'Germany',
-    postcode: '97877'
-  },
-  {
-    street: 'Wermelskirchen',
-    city: 'North Rhine-Westphalia',
-    state: 'NRW',
-    country: 'Germany',
-    postcode: '42929'
-  },
-  {
-    street: 'Werl',
-    city: 'North Rhine-Westphalia',
-    state: 'NRW',
-    country: 'Germany',
-    postcode: '59457'
-  }
-]
+import { searchPlaces, getPlaceDetails, PlacesSuggestion } from '@/app/lib/mockPlaces'
 
 interface FormData {
   email: string
@@ -103,11 +65,11 @@ export default function Checkout() {
     phone: ''
   })
 
-  const [suggestions, setSuggestions] = useState<typeof mockAddresses>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [showAddressValidation, setShowAddressValidation] = useState(false)
   const [isGooglePayAvailable, setIsGooglePayAvailable] = useState(false)
   const [isApplePayAvailable, setIsApplePayAvailable] = useState(false)
+  const [addressSuggestions, setAddressSuggestions] = useState<PlacesSuggestion[]>([])
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false)
 
   useEffect(() => {
     // Simplified availability checks for now
@@ -150,32 +112,36 @@ export default function Checkout() {
     }
   }
 
-  const handleAddressInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleInputChange(e)
+  const handleStreetAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
+    console.log('Input value:', value)
+    
+    // Update form data
+    handleInputChange(e)
 
-    if (value.length > 2) {
-      const filtered = mockAddresses.filter(address =>
-        address.street.toLowerCase().includes(value.toLowerCase())
-      )
-      setSuggestions(filtered)
-      setShowSuggestions(true)
+    // Get suggestions if user has typed at least 1 character
+    if (value.length > 0) {
+      const results = searchPlaces(value)
+      console.log('Search results:', results)
+      setAddressSuggestions(results)
+      setShowAddressSuggestions(true)
     } else {
-      setSuggestions([])
-      setShowSuggestions(false)
+      setAddressSuggestions([])
+      setShowAddressSuggestions(false)
     }
   }
 
-  const handleSuggestionClick = (address: typeof mockAddresses[0]) => {
+  const handleSuggestionSelect = (suggestion: PlacesSuggestion) => {
+    // Auto-fill the form with selected address
     setFormData(prev => ({
       ...prev,
-      street: address.street,
-      city: address.city,
-      state: address.state,
-      country: address.country,
-      postcode: address.postcode
+      street: suggestion.fullAddress.street,
+      city: suggestion.fullAddress.city,
+      state: suggestion.fullAddress.state,
+      postcode: suggestion.fullAddress.postcode,
+      country: suggestion.fullAddress.country
     }))
-    setShowSuggestions(false)
+    setShowAddressSuggestions(false)
   }
 
   const validateForm = () => {
@@ -341,36 +307,32 @@ export default function Checkout() {
                 )}
               </div>
 
-              {/* Street Address Input with Mock Autocomplete */}
+              {/* Street Address Input with Suggestions */}
               <div className="relative mb-8">
                 <input
+                  type="text"
                   name="street"
                   value={formData.street}
-                  onChange={handleAddressInput}
-                  onBlur={() => {
-                    // Delay hiding suggestions to allow for clicks
-                    setTimeout(() => setShowSuggestions(false), 200)
-                    handleBlur('street', 'A shipping street address is required.')
-                  }}
-                  type="text"
+                  onChange={handleStreetAddressChange}
+                  onBlur={() => setTimeout(() => setShowAddressSuggestions(false), 200)}
                   placeholder="Street address"
                   className={`w-full p-3 bg-gray-100 text-black ${
                     errors.street ? 'border border-red-500' : ''
                   }`}
                 />
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full bg-white border border-gray-200 mt-1 max-h-60 overflow-auto">
-                    {suggestions.map((address, index) => (
-                      <div
-                        key={index}
-                        className="p-2 hover:bg-gray-100 cursor-pointer text-black"
-                        onClick={() => handleSuggestionClick(address)}
+                
+                {/* Address Suggestions Dropdown */}
+                {showAddressSuggestions && addressSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full bg-white border border-gray-200 mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {addressSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.placeId}
+                        onClick={() => handleSuggestionSelect(suggestion)}
+                        className="w-full text-left p-3 hover:bg-gray-100 text-black border-b border-gray-100 last:border-0"
                       >
-                        <div>{address.street}</div>
-                        <div className="text-sm text-gray-500">
-                          {address.city}, {address.state}, {address.country}
-                        </div>
-                      </div>
+                        <div className="font-medium">{suggestion.mainText}</div>
+                        <div className="text-sm text-gray-600">{suggestion.secondaryText}</div>
+                      </button>
                     ))}
                   </div>
                 )}
