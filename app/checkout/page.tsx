@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -106,6 +106,14 @@ export default function Checkout() {
   const [suggestions, setSuggestions] = useState<typeof mockAddresses>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showAddressValidation, setShowAddressValidation] = useState(false)
+  const [isGooglePayAvailable, setIsGooglePayAvailable] = useState(false)
+  const [isApplePayAvailable, setIsApplePayAvailable] = useState(false)
+
+  useEffect(() => {
+    // Simplified availability checks for now
+    setIsGooglePayAvailable(true)  // We'll add proper detection later
+    setIsApplePayAvailable(true)   // We'll add proper detection later
+  }, [])
 
   // Validation functions
   const isValidEmail = (email: string) => {
@@ -212,12 +220,21 @@ export default function Checkout() {
     router.push('/checkout/payment')
   }
 
+  const handleGooglePay = () => {
+    // Simplified for now
+    console.log('Google Pay clicked')
+  }
+
+  const handleApplePay = () => {
+    // Simplified for now
+    console.log('Apple Pay clicked')
+  }
+
   return (
     <div className="min-h-screen bg-black text-white font-mono">
       {/* Header */}
       <div className="text-center py-4 border-b border-gray-800">
-        <div>@levelsio | techno optimism</div>
-        <div className="flex justify-center gap-8 mt-4 text-sm">
+        <div className="flex justify-center gap-8 text-sm">
           <div>Information</div>
           <div>›</div>
           <div>Shipping</div>
@@ -229,12 +246,47 @@ export default function Checkout() {
       <div className="max-w-[1000px] mx-auto px-4 py-8">
         <div className="grid grid-cols-[1fr,400px] gap-8">
           {/* Left Column - Form */}
-          <div className="space-y-8">
-            <div className="text-center">EXPRESS CHECKOUT</div>
+          <div>
+            <div className="text-center text-sm mb-4">EXPRESS CHECKOUT</div>
+            
+            <div className="flex gap-2 mb-4">
+              {isGooglePayAvailable && (
+                <button
+                  onClick={handleGooglePay}
+                  className="flex-1 h-12 bg-white flex items-center justify-center rounded"
+                >
+                  <Image
+                    src="/images/payment/googlepay.jpg"
+                    alt="Google Pay"
+                    width={45}
+                    height={20}
+                    className="object-contain"
+                  />
+                </button>
+              )}
+              
+              {isApplePayAvailable && (
+                <button
+                  onClick={handleApplePay}
+                  className="flex-1 h-12 bg-black border border-white flex items-center justify-center rounded"
+                >
+                  <Image
+                    src="/images/payment/applepay.jpg"
+                    alt="Apple Pay"
+                    width={45}
+                    height={20}
+                    className="object-contain"
+                  />
+                </button>
+              )}
+            </div>
 
-            <div className="text-center">OR</div>
+            <div className="text-center text-sm mb-8">OR</div>
 
             <div className="space-y-8">
+              {/* Contact Section */}
+              <div>Contact</div>
+              
               {/* Email Input */}
               <div className="relative mb-8">
                 <input
@@ -413,7 +465,7 @@ export default function Checkout() {
           </div>
 
           {/* Right Column - Order Summary */}
-          <div className="bg-gray-50 p-6 text-black">
+          <div className="bg-gray-50 p-6 text-black h-full">
             <div className="flex items-center gap-4 pb-6 border-b border-gray-200">
               <div className="relative w-16 h-16 bg-gray-200">
                 <Image
