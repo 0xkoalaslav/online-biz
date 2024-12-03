@@ -1,20 +1,88 @@
 'use client'
 
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import AddressValidationModal from '@/components/AddressValidationModal'
 
+// Mock address data
+const mockAddresses = [
+  {
+    street: 'Wernigerode',
+    city: 'Berlin',
+    state: 'Berlin',
+    country: 'Germany',
+    postcode: '10115'
+  },
+  {
+    street: 'Werribee',
+    city: 'Victoria',
+    state: 'VIC',
+    country: 'Australia',
+    postcode: '3030'
+  },
+  {
+    street: 'Wertheim Village',
+    city: 'Almosenberg',
+    state: 'Wertheim am Main',
+    country: 'Germany',
+    postcode: '97877'
+  },
+  {
+    street: 'Wermelskirchen',
+    city: 'North Rhine-Westphalia',
+    state: 'NRW',
+    country: 'Germany',
+    postcode: '42929'
+  },
+  {
+    street: 'Werl',
+    city: 'North Rhine-Westphalia',
+    state: 'NRW',
+    country: 'Germany',
+    postcode: '59457'
+  }
+]
+
+interface FormData {
+  email: string
+  fullName: string
+  street: string
+  apartment: string
+  city: string
+  state: string
+  postcode: string
+  phone: string
+  country: string
+}
+
+interface Errors {
+  email: string
+  fullName: string
+  street: string
+  city: string
+  postcode: string
+  phone: string
+}
+
+interface Address {
+  street: string
+  apartment?: string
+  city: string
+  state: string
+  postcode: string
+  country: string
+}
+
 export default function Checkout() {
-  const searchParams = useSearchParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const quantity = searchParams.get('quantity') || '1'
   const price = 35
   const total = Number(quantity) * price
 
-  const [showAddressValidation, setShowAddressValidation] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     email: '',
     fullName: '',
     street: '',
@@ -26,31 +94,122 @@ export default function Checkout() {
     country: 'Ireland'
   })
 
+  const [errors, setErrors] = useState<Errors>({
+    email: '',
+    fullName: '',
+    street: '',
+    city: '',
+    postcode: '',
+    phone: ''
+  })
+
+  const [suggestions, setSuggestions] = useState<typeof mockAddresses>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [showAddressValidation, setShowAddressValidation] = useState(false)
+
+  // Validation functions
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const isValidFullName = (name: string) => {
+    const nameParts = name.trim().split(' ')
+    return nameParts.length >= 2 && nameParts[0].length > 0 && nameParts[1].length > 0
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    // Clear error when user starts typing
+    if (name in errors) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
+    }
+  }
+
+  const handleBlur = (field: keyof Errors, message: string) => {
+    if (!formData[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: message
+      }))
+    }
+  }
+
+  const handleAddressInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange(e)
+    const value = e.target.value
+
+    if (value.length > 2) {
+      const filtered = mockAddresses.filter(address =>
+        address.street.toLowerCase().includes(value.toLowerCase())
+      )
+      setSuggestions(filtered)
+      setShowSuggestions(true)
+    } else {
+      setSuggestions([])
+      setShowSuggestions(false)
+    }
+  }
+
+  const handleSuggestionClick = (address: typeof mockAddresses[0]) => {
+    setFormData(prev => ({
+      ...prev,
+      street: address.street,
+      city: address.city,
+      state: address.state,
+      country: address.country,
+      postcode: address.postcode
+    }))
+    setShowSuggestions(false)
+  }
+
+  const validateForm = () => {
+    const newErrors = {
+      email: '',
+      fullName: '',
+      street: '',
+      city: '',
+      postcode: '',
+      phone: ''
+    }
+
+    if (!formData.email || !isValidEmail(formData.email)) {
+      newErrors.email = 'A valid email is required.'
+    }
+    if (!formData.fullName || !isValidFullName(formData.fullName)) {
+      newErrors.fullName = 'A recipient full name has to contain both first and last name'
+    }
+    if (!formData.street) newErrors.street = 'A shipping street address is required.'
+    if (!formData.city) newErrors.city = 'A shipping city is required.'
+    if (!formData.postcode) newErrors.postcode = 'A shipping zip or postal code is required.'
+    if (!formData.phone) newErrors.phone = 'A recipient phone number is required.'
+
+    setErrors(newErrors)
+    return !Object.values(newErrors).some(error => error !== '')
   }
 
   const handleContinueToShipping = () => {
-    setShowAddressValidation(true)
+    if (validateForm()) {
+      setShowAddressValidation(true)
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const handleAddressConfirm = (confirmedAddress: Address) => {
-    setFormData(confirmedAddress)
+    setFormData(prev => ({
+      ...prev,
+      ...confirmedAddress
+    }))
     setShowAddressValidation(false)
     router.push('/checkout/payment')
-  }
-
-  // Format the address for the modal
-  const originalAddress = {
-    street: formData.street,
-    apartment: formData.apartment,
-    city: formData.city,
-    state: formData.state,
-    postcode: formData.postcode,
-    country: formData.country
   }
 
   return (
@@ -75,37 +234,88 @@ export default function Checkout() {
 
             <div className="text-center">OR</div>
 
-            <div>
-              <h2 className="text-xl mb-4">Contact</h2>
-              <input
-                type="email"
-                placeholder="E-mail address"
-                className="w-full p-3 bg-gray-100 text-black"
-              />
-            </div>
+            <div className="space-y-8">
+              {/* Email Input */}
+              <div className="relative mb-8">
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('email', 'A valid email is required.')}
+                  placeholder="E-mail address"
+                  className={`w-full p-3 bg-gray-100 text-black ${
+                    errors.email ? 'border border-red-500' : ''
+                  }`}
+                />
+                {errors.email && (
+                  <div className="absolute -bottom-7 left-0 bg-red-500 text-white text-sm px-2 py-1">
+                    {errors.email}
+                  </div>
+                )}
+              </div>
 
-            <div>
-              <h2 className="text-xl mb-4">Shipping address</h2>
-              <div className="space-y-4">
-                <select className="w-full p-3 bg-gray-100 text-black">
-                  <option>Ireland</option>
-                </select>
+              {/* Full Name Input */}
+              <div className="relative mb-8">
                 <input
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
+                  onBlur={() => handleBlur('fullName', 'A recipient full name is required.')}
                   type="text"
                   placeholder="Full name"
-                  className="w-full p-3 bg-gray-100 text-black"
+                  className={`w-full p-3 bg-gray-100 text-black ${
+                    errors.fullName ? 'border border-red-500' : ''
+                  }`}
                 />
+                {errors.fullName && (
+                  <div className="absolute -bottom-7 left-0 bg-red-500 text-white text-sm px-2 py-1">
+                    {errors.fullName}
+                  </div>
+                )}
+              </div>
+
+              {/* Street Address Input with Mock Autocomplete */}
+              <div className="relative mb-8">
                 <input
                   name="street"
                   value={formData.street}
-                  onChange={handleInputChange}
+                  onChange={handleAddressInput}
+                  onBlur={() => {
+                    // Delay hiding suggestions to allow for clicks
+                    setTimeout(() => setShowSuggestions(false), 200)
+                    handleBlur('street', 'A shipping street address is required.')
+                  }}
                   type="text"
                   placeholder="Street address"
-                  className="w-full p-3 bg-gray-100 text-black"
+                  className={`w-full p-3 bg-gray-100 text-black ${
+                    errors.street ? 'border border-red-500' : ''
+                  }`}
                 />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white border border-gray-200 mt-1 max-h-60 overflow-auto">
+                    {suggestions.map((address, index) => (
+                      <div
+                        key={index}
+                        className="p-2 hover:bg-gray-100 cursor-pointer text-black"
+                        onClick={() => handleSuggestionClick(address)}
+                      >
+                        <div>{address.street}</div>
+                        <div className="text-sm text-gray-500">
+                          {address.city}, {address.state}, {address.country}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {errors.street && (
+                  <div className="absolute -bottom-7 left-0 bg-red-500 text-white text-sm px-2 py-1">
+                    {errors.street}
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-8">
                 <input
                   name="apartment"
                   value={formData.apartment}
@@ -114,43 +324,72 @@ export default function Checkout() {
                   placeholder="Apartment, suite, etc. (optional)"
                   className="w-full p-3 bg-gray-100 text-black"
                 />
-                <div className="grid grid-cols-3 gap-4">
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="relative mb-8">
                   <input
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
+                    onBlur={() => handleBlur('city', 'A shipping city is required.')}
                     type="text"
                     placeholder="City"
-                    className="p-3 bg-gray-100 text-black"
+                    className={`w-full p-3 bg-gray-100 text-black ${
+                      errors.city ? 'border border-red-500' : ''
+                    }`}
                   />
-                  <input
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    type="text"
-                    placeholder="State/province"
-                    className="p-3 bg-gray-100 text-black"
-                  />
+                  {errors.city && (
+                    <div className="absolute -bottom-7 left-0 bg-red-500 text-white text-sm px-2 py-1">
+                      {errors.city}
+                    </div>
+                  )}
+                </div>
+                <input
+                  name="state"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  type="text"
+                  placeholder="State/province"
+                  className="p-3 bg-gray-100 text-black"
+                />
+                <div className="relative mb-8">
                   <input
                     name="postcode"
                     value={formData.postcode}
                     onChange={handleInputChange}
+                    onBlur={() => handleBlur('postcode', 'A shipping zip or postal code is required.')}
                     type="text"
                     placeholder="Postal code"
-                    className="p-3 bg-gray-100 text-black"
+                    className={`w-full p-3 bg-gray-100 text-black ${
+                      errors.postcode ? 'border border-red-500' : ''
+                    }`}
                   />
+                  {errors.postcode && (
+                    <div className="absolute -bottom-7 left-0 bg-red-500 text-white text-sm px-2 py-1">
+                      {errors.postcode}
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              <div className="relative mb-8">
                 <input
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
+                  onBlur={() => handleBlur('phone', 'A recipient phone number is required.')}
                   type="tel"
                   placeholder="Phone number"
-                  className="w-full p-3 bg-gray-100 text-black"
+                  className={`w-full p-3 bg-gray-100 text-black ${
+                    errors.phone ? 'border border-red-500' : ''
+                  }`}
                 />
-                <p className="text-sm text-gray-400">
-                  The shipping carrier for this order requires a contact number
-                </p>
+                {errors.phone && (
+                  <div className="absolute -bottom-7 left-0 bg-red-500 text-white text-sm px-2 py-1">
+                    {errors.phone}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -225,7 +464,14 @@ export default function Checkout() {
       <AddressValidationModal
         isOpen={showAddressValidation}
         onClose={() => setShowAddressValidation(false)}
-        originalAddress={originalAddress}
+        originalAddress={{
+          street: formData.street,
+          apartment: formData.apartment,
+          city: formData.city,
+          state: formData.state,
+          postcode: formData.postcode,
+          country: formData.country
+        }}
         suggestedAddress={{
           street: '104 Ramleh Park',
           city: 'Dublin 6',

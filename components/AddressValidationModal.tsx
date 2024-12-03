@@ -1,11 +1,14 @@
 'use client'
 
+import React from 'react'
+
 interface Address {
   street: string
   city: string
   state: string
   postcode: string
   country: string
+  apartment?: string
 }
 
 interface AddressValidationModalProps {
