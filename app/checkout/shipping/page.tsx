@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { calculateShipping, formatDeliveryDate } from '@/app/lib/shipping'
+import { calculateShipping, formatDeliveryDate } from '@/lib/shipping'
 
 export default function Shipping() {
   const router = useRouter()
