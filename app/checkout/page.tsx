@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -37,7 +37,7 @@ interface Address {
   country: string
 }
 
-export default function Checkout() {
+function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const quantity = searchParams.get('quantity') || '1'
@@ -510,5 +510,19 @@ export default function Checkout() {
         onConfirm={handleAddressConfirm}
       />
     </div>
+  )
+}
+
+export default function Checkout() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen bg-black text-white font-mono flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <CheckoutContent />
+    </Suspense>
   )
 } 
