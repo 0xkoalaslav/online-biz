@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { calculateShipping, formatDeliveryDate } from '@/lib/shipping'
 
-export default function Shipping() {
+// Move the main component content into ShippingContent
+function ShippingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -161,5 +162,18 @@ export default function Shipping() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrap with Suspense
+export default function ShippingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black text-white font-mono flex items-center justify-center">
+        Loading...
+      </div>
+    }>
+      <ShippingContent />
+    </Suspense>
   )
 } 
