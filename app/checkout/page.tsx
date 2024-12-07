@@ -7,6 +7,9 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AddressValidationModal from '@/components/AddressValidationModal'
 import { searchPlaces, getPlaceDetails, PlacesSuggestion } from '@/lib/mockPlaces'
+import { validateAddress } from '@/lib/mockAddressValidation'
+import { getAvailableShippingMethods } from '@/lib/mockShippingService'
+import type { ShippingMethod } from '@/lib/mockShippingService'
 
 interface FormData {
   email: string
@@ -36,6 +39,13 @@ interface Address {
   state: string
   postcode: string
   country: string
+}
+
+interface ShippingOption {
+  id: string
+  name: string
+  price: number
+  estimatedDays: string
 }
 
 function CheckoutContent() {
@@ -71,6 +81,30 @@ function CheckoutContent() {
   const [isApplePayAvailable, setIsApplePayAvailable] = useState(false)
   const [addressSuggestions, setAddressSuggestions] = useState<PlacesSuggestion[]>([])
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false)
+  const [selectedShippingOption, setSelectedShippingOption] = useState<string>('standard')
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple' | 'google' | 'paypal'>('card')
+  const [cardNumber, setCardNumber] = useState('')
+  const [cardExpiry, setCardExpiry] = useState('')
+  const [cardCVC, setCardCVC] = useState('')
+  const [useShippingForBilling, setUseShippingForBilling] = useState(true)
+  const [isAddressConfirmed, setIsAddressConfirmed] = useState(false)
+  const [availableShippingMethods, setAvailableShippingMethods] = useState<ShippingMethod[]>([])
+  const [shippingMessage, setShippingMessage] = useState<string>('')
+
+  const shippingOptions: ShippingOption[] = [
+    {
+      id: 'standard',
+      name: 'Standard Shipping',
+      price: 5,
+      estimatedDays: '5-7 business days'
+    },
+    {
+      id: 'expedited',
+      name: 'Expedited Shipping',
+      price: 15,
+      estimatedDays: '2-3 business days'
+    }
+  ]
 
   useEffect(() => {
     // Simplified availability checks for now
@@ -105,7 +139,7 @@ function CheckoutContent() {
   }
 
   const handleBlur = (field: keyof Errors, message: string) => {
-    if (!formData[field]) {
+    if (!formData[field].trim()) {
       setErrors(prev => ({
         ...prev,
         [field]: message
@@ -142,6 +176,15 @@ function CheckoutContent() {
       postcode: suggestion.fullAddress.postcode,
       country: suggestion.fullAddress.country
     }))
+
+    // Clear errors for fields that were just auto-filled
+    setErrors(prev => ({
+      ...prev,
+      street: '',
+      city: '',
+      postcode: ''
+    }))
+
     setShowAddressSuggestions(false)
   }
 
@@ -170,8 +213,9 @@ function CheckoutContent() {
     return !Object.values(newErrors).some(error => error !== '')
   }
 
-  const handleContinueToShipping = () => {
+  const handleSubmitOrder = () => {
     if (validateForm()) {
+      // Show address validation modal
       setShowAddressValidation(true)
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -183,22 +227,13 @@ function CheckoutContent() {
       ...prev,
       ...confirmedAddress
     }))
-    setShowAddressValidation(false)
     
-    // Create URL with address parameters
-    const params = new URLSearchParams({
-      street: confirmedAddress.street,
-      city: confirmedAddress.city,
-      state: confirmedAddress.state,
-      postcode: confirmedAddress.postcode,
-      country: confirmedAddress.country
-    })
-    
-    if (confirmedAddress.apartment) {
-      params.append('apartment', confirmedAddress.apartment)
-    }
-    
-    router.push(`/checkout/shipping?${params.toString()}`)
+    // Check shipping availability for the confirmed address
+    const shippingAvailability = getAvailableShippingMethods(confirmedAddress)
+    setAvailableShippingMethods(shippingAvailability.methods)
+    setShippingMessage(shippingAvailability.message || '')
+    setSelectedShippingOption(shippingAvailability.methods[0].id) // Select first available method
+    setIsAddressConfirmed(true)
   }
 
   const handleGooglePay = () => {
@@ -374,14 +409,18 @@ function CheckoutContent() {
                     </div>
                   )}
                 </div>
+                
+                <div className="mb-8">
                 <input
                   name="state"
                   value={formData.state}
                   onChange={handleInputChange}
                   type="text"
                   placeholder="State/province"
-                  className="p-3 bg-gray-100 text-black"
+                    className="w-full p-3 bg-gray-100 text-black"
                 />
+                </div>
+                
                 <div className="relative mb-8">
                   <input
                     name="postcode"
@@ -422,15 +461,243 @@ function CheckoutContent() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4">
+            {/* Delivery Options Section */}
+            <div className="mt-8 border-t border-gray-800 pt-8">
+              <h2 className="text-lg mb-4">Delivery options</h2>
+              
+              {!isAddressConfirmed ? (
+                <div className="space-y-4">
+                  {formData.street && formData.city && formData.postcode ? (
+                    <>
+                      <p className="mb-4">We couldn't verify your address. Did you mean:</p>
+                      
+                      <div className="p-4 bg-gray-800 mb-6">
+                        <p>{validateAddress(formData).street}</p>
+                        {formData.apartment && <p>{formData.apartment}</p>}
+                        <p>{validateAddress(formData).city}</p>
+                        <p>{validateAddress(formData).state}, {validateAddress(formData).postcode}</p>
+                        <p>{validateAddress(formData).country}</p>
+                      </div>
+
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => handleAddressConfirm(validateAddress(formData))}
+                          className="flex-1 py-3 bg-white text-black hover:bg-gray-100"
+                        >
+                          Use suggested address
+                        </button>
+                        <button
+                          onClick={() => handleAddressConfirm(formData)}
+                          className="flex-1 py-3 border border-white hover:bg-gray-900"
+                        >
+                          Keep original address
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p>Enter your shipping address to see delivery options</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {shippingMessage && (
+                    <div className="text-sm text-yellow-500 mb-4">
+                      {shippingMessage}
+                    </div>
+                  )}
+                  {availableShippingMethods.map((option) => (
+                    <label 
+                      key={option.id}
+                      className={`flex items-center justify-between p-4 border ${
+                        selectedShippingOption === option.id 
+                          ? 'border-white' 
+                          : 'border-gray-800'
+                      } cursor-pointer`}
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value={option.id}
+                          checked={selectedShippingOption === option.id}
+                          onChange={(e) => setSelectedShippingOption(e.target.value)}
+                          className="mr-3"
+                        />
+                        <div>
+                          <div>{option.name}</div>
+                          <div className="text-sm text-gray-400">{option.estimatedDays}</div>
+                        </div>
+                      </div>
+                      <div>${option.price}</div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Payment Section */}
+            <div className="mt-8 border-t border-gray-800 pt-8">
+              <h2 className="text-lg mb-4">Payment</h2>
+              
+              {/* Billing Address Checkbox */}
+              <label className="flex items-center mb-6 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useShippingForBilling}
+                  onChange={(e) => setUseShippingForBilling(e.target.checked)}
+                  className="mr-3"
+                />
+                Use my shipping address for billing
+              </label>
+
+              <div className="space-y-4">
+                {/* Credit Card Option */}
+                <div 
+                  onClick={() => setPaymentMethod('card')}
+                  className={`p-4 border cursor-pointer ${
+                    paymentMethod === 'card' ? 'border-white' : 'border-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center mb-4">
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'card'}
+                      onChange={() => setPaymentMethod('card')}
+                      className="mr-3"
+                    />
+                    <span>Card</span>
+                  </div>
+                  
+                  {paymentMethod === 'card' && (
+                    <div className="space-y-4 pl-6">
+                      <input
+                        type="text"
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(e.target.value)}
+                        placeholder="Card number"
+                        className="w-full p-3 bg-gray-100 text-black"
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          value={cardExpiry}
+                          onChange={(e) => setCardExpiry(e.target.value)}
+                          placeholder="MM / YY"
+                          className="p-3 bg-gray-100 text-black"
+                        />
+                        <input
+                          type="text"
+                          value={cardCVC}
+                          onChange={(e) => setCardCVC(e.target.value)}
+                          placeholder="CVC"
+                          className="p-3 bg-gray-100 text-black"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* PayPal Option */}
+                <div 
+                  onClick={() => setPaymentMethod('paypal')}
+                  className={`p-4 border cursor-pointer ${
+                    paymentMethod === 'paypal' ? 'border-white' : 'border-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        name="payment"
+                        checked={paymentMethod === 'paypal'}
+                        onChange={() => setPaymentMethod('paypal')}
+                        className="mr-3"
+                      />
+                      <span>PayPal</span>
+                    </div>
+                    <Image
+                      src="/images/payment/paypal.jpg"
+                      alt="PayPal"
+                      width={45}
+                      height={20}
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
+
+                {/* Apple Pay Option */}
+                {isApplePayAvailable && (
+                  <div 
+                    onClick={() => setPaymentMethod('apple')}
+                    className={`p-4 border cursor-pointer ${
+                      paymentMethod === 'apple' ? 'border-white' : 'border-gray-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'apple'}
+                          onChange={() => setPaymentMethod('apple')}
+                          className="mr-3"
+                        />
+                        <span>Apple Pay</span>
+                      </div>
+                      <Image
+                        src="/images/payment/applepay.jpg"
+                        alt="Apple Pay"
+                        width={45}
+                        height={20}
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Google Pay Option */}
+                {isGooglePayAvailable && (
+                  <div 
+                    onClick={() => setPaymentMethod('google')}
+                    className={`p-4 border cursor-pointer ${
+                      paymentMethod === 'google' ? 'border-white' : 'border-gray-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="payment"
+                          checked={paymentMethod === 'google'}
+                          onChange={() => setPaymentMethod('google')}
+                          className="mr-3"
+                        />
+                        <span>Google Pay</span>
+                      </div>
+                      <Image
+                        src="/images/payment/googlepay.jpg"
+                        alt="Google Pay"
+                        width={45}
+                        height={20}
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Submit Order Button */}
+            <div className="flex justify-between items-center mt-8">
               <Link href="/" className="text-sm">
                 ‹ Return to Cart
               </Link>
               <button 
-                onClick={handleContinueToShipping}
+                onClick={handleSubmitOrder}
                 className="px-6 py-3 bg-black text-white border border-white hover:bg-white hover:text-black"
               >
-                Continue to Shipping
+                Complete Order
               </button>
             </div>
 
@@ -469,6 +736,10 @@ function CheckoutContent() {
                 <div>Subtotal ({quantity} items)</div>
                 <div>${total}</div>
               </div>
+              <div className="flex justify-between mb-2">
+                <div>Shipping</div>
+                <div>${shippingOptions.find(opt => opt.id === selectedShippingOption)?.price || 0}</div>
+              </div>
               <div className="flex justify-between">
                 <div>Taxes/VAT</div>
                 <div>-</div>
@@ -479,7 +750,7 @@ function CheckoutContent() {
               <div>Total</div>
               <div className="text-right">
                 <div className="text-sm text-gray-500">USD</div>
-                <div>${total}</div>
+                <div>${total + (shippingOptions.find(opt => opt.id === selectedShippingOption)?.price || 0)}</div>
               </div>
             </div>
 
@@ -489,27 +760,6 @@ function CheckoutContent() {
           </div>
         </div>
       </div>
-
-      <AddressValidationModal
-        isOpen={showAddressValidation}
-        onClose={() => setShowAddressValidation(false)}
-        originalAddress={{
-          street: formData.street,
-          apartment: formData.apartment,
-          city: formData.city,
-          state: formData.state,
-          postcode: formData.postcode,
-          country: formData.country
-        }}
-        suggestedAddress={{
-          street: '104 Ramleh Park',
-          city: 'Dublin 6',
-          state: 'Dublin',
-          postcode: 'D06 R5F6',
-          country: 'Ireland'
-        }}
-        onConfirm={handleAddressConfirm}
-      />
     </div>
   )
 }
